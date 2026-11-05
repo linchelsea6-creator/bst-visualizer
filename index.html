@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101928">
+  <meta name="description" content="BST Lab: learn binary search tree insertion, search and deletion by predicting, stepping through and exploring each operation.">
+  <title>BST Lab — See the algorithm. Understand the why.</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="bst.js"></script>
+  <script defer src="script.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="BST Lab home"><span class="brand-mark" aria-hidden="true">⌘</span><span>BST<span class="brand-accent">Lab</span></span></a>
+      <nav aria-label="Main navigation"><a class="nav-link active" href="#explorer">Explorer</a><a class="nav-link" href="#challenge">Challenge</a><a class="nav-link" href="#learn">Learn</a></nav>
+      <span class="course-pill">DATA STRUCTURES · INTERACTIVE</span>
+    </header>
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="eyebrow"><span class="eyebrow-dot"></span> LEARN BY DOING · BINARY SEARCH TREES</div>
+        <h1 id="hero-title">See the algorithm.<br><span>Understand the why.</span></h1>
+        <p>Insert, search, and delete nodes. Follow every decision. Then test your intuition with a challenge built around the trickiest part of BSTs.</p>
+        <div class="hero-actions"><a class="button button-primary" href="#explorer">Explore a tree <span aria-hidden="true">↗</span></a><a class="button button-ghost" href="#challenge">Try a deletion challenge <span aria-hidden="true">→</span></a></div>
+      </section>
+      <section id="explorer" class="workbench" aria-labelledby="explorer-title">
+        <div class="section-top"><div><div class="eyebrow subdued">01 / EXPLORE</div><h2 id="explorer-title">Tree explorer</h2><p>Build a tree and watch how each operation thinks.</p></div><span class="chip"><span class="status-dot"></span> Live visualization</span></div>
+        <div class="workspace-grid">
+          <div class="panel tree-panel">
+            <div class="panel-heading"><div><h3>Your binary search tree</h3><p>Smaller values go left. Larger values go right.</p></div><button id="reset-btn" class="text-button" type="button">↺ Reset tree</button></div>
+            <div class="operation-bar" role="group" aria-label="Choose an operation">
+              <button type="button" class="operation selected" data-operation="insert" aria-pressed="true">＋ Insert</button>
+              <button type="button" class="operation" data-operation="search" aria-pressed="false">⌕ Search</button>
+              <button type="button" class="operation" data-operation="delete" aria-pressed="false">− Delete</button>
+            </div>
+            <form id="operation-form" class="input-row"><label class="sr-only" for="node-input">Node value</label><input id="node-input" type="number" min="0" max="999" step="1" placeholder="Enter value (0–999)" value="35" required><button id="go-btn" class="button button-primary" type="submit">Insert node ↗</button></form>
+            <div class="tree-canvas" id="tree-canvas"><svg id="tree-svg" viewBox="0 0 760 350" role="img" aria-label="Interactive binary search tree visualization" preserveAspectRatio="xMidYMid meet"></svg><div class="canvas-caption">ROOT <span>•</span> LEFT &lt; PARENT &lt; RIGHT</div></div>
+            <div class="tree-stats"><span><strong id="stat-nodes">7</strong> nodes</span><span><strong id="stat-height">3</strong> levels</span><span class="inorder-wrap">In-order: <code id="stat-inorder">20, 30, 40, 50, 60, 70, 80</code></span></div>
+          </div>
+          <aside class="panel step-panel" aria-labelledby="trace-title">
+            <div class="panel-heading"><div><div class="mini-label">ALGORITHM TRACE</div><h3 id="trace-title">Every step, explained</h3></div><span id="step-count" class="count-label">0 / 0</span></div>
+            <div class="step-message" aria-live="polite"><div id="step-tag" class="step-tag">READY</div><p id="step-text">Choose an operation and a value to see each decision in the tree.</p></div>
+            <div class="step-controls"><button id="prev-btn" type="button" class="button button-outline" disabled>← Previous</button><button id="next-btn" type="button" class="button button-dark" disabled>Next step →</button></div>
+            <div class="progress-track" aria-label="Operation progress"><div id="step-progress" class="progress-fill"></div></div>
+            <div class="code-head"><span id="code-heading">ALGORITHM PSEUDOCODE</span><span id="code-name">INSERT</span></div>
+            <div class="code-toggle" role="group" aria-label="Code display"><button class="code-mode selected" data-code-mode="pseudo" aria-pressed="true">Pseudocode</button><button class="code-mode" data-code-mode="java" aria-pressed="false">Java code</button></div>
+            <div id="code-panel" class="code-panel" aria-label="Pseudocode with highlighted current step"></div>
+            <div class="tip"><span class="tip-icon">✦</span><p><strong>Learning tip</strong><br>Predict which direction the algorithm will go <em>before</em> clicking Next.</p></div>
+          </aside>
+        </div>
+        <div class="quick-presets"><span>TRY A SCENARIO:</span><button type="button" data-preset="leaf">Delete a leaf</button><button type="button" data-preset="one">Delete a node with 1 child</button><button type="button" data-preset="two">Delete a node with 2 children</button><button type="button" data-preset="skew">See an unbalanced tree</button></div>
+      </section>
+      <section id="challenge" class="challenge-section" aria-labelledby="challenge-title">
+        <div class="section-top"><div><div class="eyebrow subdued">02 / PREDICT · OBSERVE · EXPLAIN</div><h2 id="challenge-title">The deletion challenge</h2><p>Make a prediction on the tree, then test it against the algorithm.</p></div><span class="chip purple-chip">✦ Interactive practice</span></div>
+        <div class="challenge-settings"><label for="challenge-level">Practice mode</label><select id="challenge-level"><option value="guided">Guided: 3 deletion cases</option><option value="random">Fresh random trees</option></select><button id="challenge-new" class="button button-outline" type="button">↻ Generate new problem</button><span id="challenge-score" aria-live="polite">Score: 0 / 0</span></div>
+        <div class="challenge-grid"><div class="panel challenge-figure"><div class="challenge-header"><span id="challenge-number">CHALLENGE 1 OF 3</span><span id="challenge-case">TWO CHILDREN</span></div><svg id="challenge-svg" viewBox="0 0 620 300" role="group" aria-label="Clickable binary search tree for the current challenge"></svg><p id="challenge-note" class="challenge-note">Click a node in the tree to make your prediction. The amber node is being deleted.</p><div class="solution-controls" id="solution-controls" hidden><div class="solution-top"><strong>Watch the solution</strong><span id="solution-count">1 / 1</span></div><p id="solution-message" aria-live="polite"></p><div class="step-controls"><button type="button" id="solution-prev" class="button button-outline">← Previous</button><button type="button" id="solution-play" class="button button-outline">▶ Play</button><button type="button" id="solution-next" class="button button-dark">Next →</button></div></div></div><div class="panel challenge-answers"><div class="mini-label">MAKE YOUR PREDICTION</div><h3 id="challenge-question">What happens next?</h3><p id="challenge-prompt">Click a node on the left to answer.</p><div class="answer-options" id="answer-options"></div><div id="challenge-feedback" aria-live="polite" class="feedback" hidden></div><button id="challenge-show" type="button" class="button button-primary" hidden>▶ Visualize the solution</button><button id="challenge-next" type="button" class="button button-dark" hidden>Next challenge →</button></div></div>
+        <div class="method-note"><strong>How this teaches differently:</strong> You must first locate the important node yourself, then see the full deletion trace and an explanation tailored to your choice. Use random mode for new practice trees.</div>
+      </section>
+      <section id="learn" class="learn-section" aria-labelledby="learn-title"><div class="section-top"><div><div class="eyebrow subdued">03 / UNDERSTAND</div><h2 id="learn-title">Why BST deletion feels tricky</h2><p>The same operation follows three different rules depending on the node.</p></div></div>
+        <div class="concept-grid"><article class="concept-card"><span class="concept-index">CASE 01</span><h3>Zero children</h3><p><strong>Leaf node:</strong> remove it. No other links need to change.</p><div class="concept-symbol">● <span class="symbol-arrow">→</span> ∅</div></article><article class="concept-card"><span class="concept-index">CASE 02</span><h3>One child</h3><p><strong>One subtree:</strong> connect the parent directly to the existing child.</p><div class="concept-symbol">● <span class="symbol-arrow">→</span> ◉</div></article><article class="concept-card accent-card"><span class="concept-index">CASE 03 · MOST SUBTLE</span><h3>Two children</h3><p><strong>Two subtrees:</strong> replace the value with its in-order successor, then remove the successor's original node.</p><div class="concept-symbol">● <span class="symbol-arrow">→</span> ✦</div></article></div>
+        <div class="insight"><div class="insight-mark">!</div><div><strong>Why the in-order successor?</strong><p>It's the smallest value in the deleted node's right subtree, so it fits between all values on the left and the remaining values on the right. This demo consistently uses the successor method; the predecessor method also works.</p></div></div>
+      </section>
+    </main>
+    <footer><span>BST<span class="brand-accent">Lab</span> · A visual guide to binary search trees</span><span>Built for learning · No account required</span></footer>
+  </div>
+</body>
+</html>
