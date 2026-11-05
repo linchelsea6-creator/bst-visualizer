@@ -25,13 +25,4 @@ https://linchelsea6-creator.github.io/bst-visualizer/
 
 ### About the Project
 
-This project was developed for NYU's CSCI-UA 102 Data Structures course.
-
 The goal is to make BST operations more intuitive by combining visual explanations with active learning. Rather than simply watching an algorithm run, students can make predictions, explore different cases, and understand the reasoning behind each operation.
-
-### Running Locally
-
-1. Download or clone this repository.
-2. Open `index.html` in a web browser.
-
-No installation or additional dependencies are required.
