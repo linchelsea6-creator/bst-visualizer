@@ -97,9 +97,22 @@
     el.textContent = String(str);
     return el;
   }
-  // Position nodes by their in-order rank: labels don't overlap on skewed trees.
+  // --- Animated rendering -------------------------------------------------
+  // The old draw() wiped the SVG on every step, so nothing could ever move.
+  // This version keeps the previous frame's positions per-SVG and animates
+  // between frames with the Web Animations API:
+  //  - surviving nodes slide from their old spot to their new spot
+  //  - new nodes grow out of their parent
+  //  - removed nodes shrink/fade as ghosts instead of vanishing
+  //  - an orange traveler dot rides the edge to the currently active node
+  //  - when a step highlights two nodes (the successor-copy step of a
+  //    two-child deletion), a ghost of the successor's value floats up
+  //    into the node being deleted
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const ANIM = 560;
   function draw(svg, root, active = [], status = 'visit', emphasize = null) {
-    svg.replaceChildren();
+    const prevPos = svg._prevPos || new Map();
+    const prevActive = svg._prevActive || [];
     const nodes = [], edges = [];
     const walk = (n, depth = 0, parent = null) => {
       if (!n) return;
@@ -108,9 +121,11 @@
       walk(n.right, depth + 1, n);
     };
     walk(root);
+    svg.replaceChildren();
     if (!nodes.length) {
       svg.setAttribute('viewBox', '0 0 760 350');
-      textEl(svg, 'Empty tree — insert a value to begin', 380, 165, { 'text-anchor': 'middle', fill: '#93a0b3', 'font-size': 16 });
+      textEl(svg, 'Empty tree — insert a value to begin', 380, 165, { 'text-anchor': 'middle', fill: '#8a8168', 'font-size': 16 });
+      svg._prevPos = new Map(); svg._prevActive = [];
       return;
     }
     const width = 760, maxDepth = Math.max(...nodes.map(n => n.depth));
@@ -121,16 +136,94 @@
     nodes.forEach((n, i) => { n.x = nodes.length === 1 ? width / 2 : 50 + i * stepX; n.y = 45 + n.depth * 69; });
     const map = new Map(nodes.map(n => [n.value, n]));
     nodes.forEach(n => { if (n.parent !== null) { const p = map.get(n.parent); if (p) edges.push([p, n]); } });
-    edges.forEach(([p, n]) => svgEl('line', { x1: p.x, y1: p.y, x2: n.x, y2: n.y, class: 'tree-edge' }, svg));
+    // Edges: brand-new edges draw themselves in.
+    edges.forEach(([p, n]) => {
+      const line = svgEl('line', { x1: p.x, y1: p.y, x2: n.x, y2: n.y, class: 'tree-edge' }, svg);
+      const isNew = !prevPos.has(n.value) || !prevPos.has(p.value);
+      if (isNew && !reduceMotion) {
+        line.classList.add('edge-new');
+        const len = Math.hypot(n.x - p.x, n.y - p.y);
+        line.style.strokeDasharray = String(len);
+        line.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: ANIM, easing: 'ease-out' });
+      }
+    });
+    // Ghosts for nodes that disappeared in this frame (e.g. a deleted leaf).
+    if (!reduceMotion) prevPos.forEach((pos, value) => {
+      if (map.has(value)) return;
+      const ghost = svgEl('g', { class: 'removed-node', transform: `translate(${pos.x} ${pos.y})`, opacity: 1 }, svg);
+      svgEl('circle', { r: 23, class: 'tree-node miss-node' }, ghost);
+      textEl(ghost, value, 0, 1, { class: 'tree-label' });
+      ghost.animate([
+        { transform: `translate(${pos.x}px, ${pos.y}px) scale(1)`, opacity: 1 },
+        { transform: `translate(${pos.x}px, ${pos.y + 14}px) scale(.35)`, opacity: 0 }
+      ], { duration: 620, easing: 'ease-in' });
+    });
+    // Nodes: ground shadow first (gives the lifted, 3D feel), then the disc.
     nodes.forEach(n => {
       const isActive = active.includes(n.value);
       const marked = n.value === emphasize;
-      const group = svgEl('g', { 'aria-label': `Node ${n.value}` }, svg);
+      const group = svgEl('g', { 'aria-label': `Node ${n.value}`, transform: `translate(${n.x} ${n.y})` }, svg);
+      svgEl('ellipse', { cx: 4, cy: 9, rx: 20, ry: 6, class: 'node-shadow' }, group);
+      const inner = svgEl('g', { class: 'node-inner' }, group);
       const circleClass = marked ? 'miss-node' : isActive ? (status === 'success' ? 'success-node' : status === 'miss' ? 'miss-node' : 'active-node') : '';
-      svgEl('circle', { cx: n.x, cy: n.y, r: 23, class: `tree-node ${circleClass}` }, group);
-      textEl(group, n.value, n.x, n.y + 1, { class: 'tree-label' });
-      if (n.depth === 0) textEl(group, 'ROOT', n.x, n.y - 35, { fill: '#9aa5b4', 'font-size': 9, 'text-anchor': 'middle', 'font-weight': 850, 'letter-spacing': 1.1 });
+      svgEl('circle', { r: 23, class: `tree-node ${circleClass}` }, inner);
+      textEl(inner, n.value, 0, 1, { class: 'tree-label' });
+      if (n.depth === 0) textEl(group, 'ROOT', 0, -35, { fill: '#8a8168', 'font-size': 9, 'text-anchor': 'middle', 'font-weight': 700, 'letter-spacing': 1.1 });
+      if (reduceMotion) return;
+      const prev = prevPos.get(n.value);
+      if (prev && (prev.x !== n.x || prev.y !== n.y)) {
+        // Surviving node, new home: slide there (one-child promotion, etc).
+        group.animate([
+          { transform: `translate(${prev.x}px, ${prev.y}px)` },
+          { transform: `translate(${n.x}px, ${n.y}px)` }
+        ], { duration: ANIM, easing: 'cubic-bezier(.22,1,.36,1)' });
+      } else if (!prev) {
+        // New node: grow out of its parent (or drop in as a fresh root).
+        const p = n.parent !== null ? (prevPos.get(n.parent) || map.get(n.parent)) : null;
+        const sx = p ? p.x : n.x, sy = p ? p.y : n.y - 46;
+        group.animate([
+          { transform: `translate(${sx}px, ${sy}px)` },
+          { transform: `translate(${n.x}px, ${n.y}px)` }
+        ], { duration: ANIM, easing: 'cubic-bezier(.22,1,.36,1)' });
+        inner.animate([{ transform: 'scale(.3)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: ANIM, easing: 'ease-out' });
+      }
+      if (isActive) {
+        inner.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.16)' }, { transform: 'scale(1)' }], { duration: 540, easing: 'ease-in-out' });
+      }
     });
+    if (!reduceMotion) {
+      // Traveler: an orange dot rides from the previously active node to
+      // the newly active one, so the eye follows the traversal path.
+      const fromVal = prevActive[0], toVal = active[0];
+      if (toVal !== undefined && fromVal !== undefined && fromVal !== toVal) {
+        const from = prevPos.get(fromVal), to = map.get(toVal);
+        if (from && to) {
+          const dot = svgEl('circle', { r: 7, class: 'traveler' }, svg);
+          dot.animate([
+            { transform: `translate(${from.x}px, ${from.y}px)`, opacity: 1 },
+            { transform: `translate(${to.x}px, ${to.y}px)`, opacity: 1, offset: .85 },
+            { transform: `translate(${to.x}px, ${to.y}px)`, opacity: 0 }
+          ], { duration: 620, easing: 'ease-in-out', fill: 'forwards' });
+        }
+      }
+      // Successor copy: a step highlighting two nodes is the moment the
+      // successor's value replaces the deleted node's value. Float it up.
+      if (active.length >= 2) {
+        const dest = map.get(active[0]), src = map.get(active[1]);
+        if (dest && src && dest !== src) {
+          const ghost = svgEl('g', { class: 'ghost-value', transform: `translate(${src.x} ${src.y})` }, svg);
+          svgEl('circle', { r: 23 }, ghost);
+          textEl(ghost, src.value, 0, 1, {});
+          ghost.animate([
+            { transform: `translate(${src.x}px, ${src.y}px) scale(1)`, opacity: 1 },
+            { transform: `translate(${dest.x}px, ${dest.y}px) scale(1)`, opacity: 1, offset: .8 },
+            { transform: `translate(${dest.x}px, ${dest.y}px) scale(1.25)`, opacity: 0 }
+          ], { duration: 1050, easing: 'ease-in-out', fill: 'forwards' });
+        }
+      }
+    }
+    svg._prevPos = new Map(nodes.map(n => [n.value, { x: n.x, y: n.y }]));
+    svg._prevActive = [...active];
   }
   function updateStats(displayTree) {
     $('stat-nodes').textContent = BST.count(displayTree);
@@ -152,6 +245,11 @@
       lineEl.append(lineNum, codeText); container.append(lineEl);
     });
   }
+  let mainPlayer = null;
+  function stopMainPlayer() {
+    if (mainPlayer !== null) { clearInterval(mainPlayer); mainPlayer = null; }
+    const btn = $('play-btn'); if (btn) btn.textContent = 'Play';
+  }
   function render() {
     const hasTrace = Boolean(currentTrace);
     let displayTree = tree;
@@ -164,16 +262,18 @@
       $('step-count').textContent = `${index + 1} / ${currentTrace.steps.length}`;
       $('step-progress').style.width = `${((index + 1) / currentTrace.steps.length) * 100}%`;
       $('prev-btn').disabled = index === 0;
+      $('play-btn').disabled = index >= currentTrace.steps.length - 1 && mainPlayer === null;
       $('next-btn').disabled = index >= currentTrace.steps.length - 1;
-      $('next-btn').textContent = index === currentTrace.steps.length - 2 ? 'Finish →' : 'Next step →';
+      $('next-btn').textContent = index === currentTrace.steps.length - 2 ? 'Finish' : 'Next step';
     } else {
-      $('step-text').textContent = 'Choose an operation and a value to see each decision in the tree.';
+      $('step-text').textContent = 'Choose an operation and a value. The orange dot travels the path the algorithm takes.';
       $('step-tag').textContent = 'READY';
       $('step-count').textContent = '0 / 0';
       $('step-progress').style.width = '0%';
       $('prev-btn').disabled = true;
+      $('play-btn').disabled = true;
       $('next-btn').disabled = true;
-      $('next-btn').textContent = 'Next step →';
+      $('next-btn').textContent = 'Next step';
     }
     draw($('tree-svg'), displayTree, step ? step.active : [], step ? step.status : 'visit');
     updateStats(displayTree);
@@ -182,7 +282,7 @@
   function stepTo(next) {
     if (!currentTrace) return;
     index = Math.min(Math.max(next, 0), currentTrace.steps.length - 1);
-    if (index === currentTrace.steps.length - 1) tree = BST.clone(currentTrace.tree);
+    if (index === currentTrace.steps.length - 1) { tree = BST.clone(currentTrace.tree); stopMainPlayer(); }
     render();
   }
   function start(action, value) {
@@ -208,7 +308,8 @@
       button.classList.toggle('selected', active);
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
-    $('go-btn').textContent = `${op[0].toUpperCase() + op.slice(1)} node ↗`;
+    $('go-btn').textContent = `${op[0].toUpperCase() + op.slice(1)} node`;
+    stopMainPlayer();
     currentTrace = null;
     render();
   }
@@ -223,9 +324,27 @@
   }));
   document.querySelectorAll('[data-operation]').forEach(btn => btn.addEventListener('click', () => chooseOperation(btn.dataset.operation)));
   $('operation-form').addEventListener('submit', e => { e.preventDefault(); start(operation, Number($('node-input').value)); });
-  $('next-btn').addEventListener('click', () => stepTo(index + 1));
-  $('prev-btn').addEventListener('click', () => stepTo(index - 1));
-  $('reset-btn').addEventListener('click', () => { tree = BST.fromValues(EXAMPLE); currentTrace = null; render(); });
+  $('next-btn').addEventListener('click', () => { stopMainPlayer(); stepTo(index + 1); });
+  $('prev-btn').addEventListener('click', () => { stopMainPlayer(); stepTo(index - 1); });
+  $('play-btn').addEventListener('click', () => {
+    if (!currentTrace) return;
+    if (mainPlayer !== null) { stopMainPlayer(); render(); return; }
+    if (index >= currentTrace.steps.length - 1) stepTo(0);
+    $('play-btn').textContent = 'Pause';
+    mainPlayer = setInterval(() => stepTo(index + 1), 1150);
+  });
+  $('reset-btn').addEventListener('click', () => { stopMainPlayer(); tree = BST.fromValues(EXAMPLE); currentTrace = null; render(); });
+  // Hero 3D parallax: tilt the floating tree a few degrees toward the pointer.
+  const heroScene = $('hero-scene');
+  if (heroScene && !reduceMotion) {
+    const sceneTree = heroScene.querySelector('.scene-tree');
+    heroScene.addEventListener('pointermove', e => {
+      const r = heroScene.getBoundingClientRect();
+      const dx = (e.clientX - r.left) / r.width - .5, dy = (e.clientY - r.top) / r.height - .5;
+      sceneTree.style.transform = `translate(${dx * 14}px, ${dy * 10}px)`;
+    });
+    heroScene.addEventListener('pointerleave', () => { sceneTree.style.transform = ''; });
+  }
   const presets = {
     leaf: { values: EXAMPLE, target: 20 },
     one: { values: [50, 30, 70, 20, 40, 35, 60, 80], target: 40 },
@@ -289,7 +408,7 @@
   }
   function stopPlayer() {
     if (player !== null) { clearInterval(player); player = null; }
-    $('solution-play').textContent = '▶ Play';
+    $('solution-play').textContent = 'Play';
   }
   function questionText(q) {
     if (q.type === 'TWO CHILDREN') return {
@@ -305,7 +424,7 @@
   function explainMistake(q, picked) {
     if (q.type === 'TWO CHILDREN') {
       const root = BST.fromValues(q.values), n = getNode(root, q.target);
-      if (picked === q.target) return `The amber node ${picked} is being deleted; it cannot be its own replacement. Look in its right subtree.`;
+      if (picked === q.target) return `The orange node ${picked} is being deleted; it cannot be its own replacement. Look in its right subtree.`;
       if (n.right && picked === n.right.value && picked !== q.answer) return `You clicked the immediate right child, ${picked}. But its left subtree contains a smaller candidate, ${q.answer}. Follow left links until you cannot go left again.`;
       if (picked < q.target) return `${picked} lies below the left side of ${q.target}. The successor must be strictly larger than the deleted value, in its right subtree.`;
       return `${picked} isn't the smallest value larger than ${q.target}. Follow the right child, then keep moving left to reach ${q.answer}.`;
@@ -328,7 +447,7 @@
       const current = solution.steps[solutionIndex];
       root = current.tree; active = current.active; status = current.status;
       // After starting the replay, let the trace highlight the current node rather than
-      // treating the deleted original value as a permanent amber highlight.
+      // treating the deleted original value as a permanent orange highlight.
       emphasize = null;
       $('solution-count').textContent = `${solutionIndex + 1} / ${solution.steps.length}`;
       $('solution-message').textContent = current.message;
@@ -356,13 +475,24 @@
     if (success) correctCount++;
     $('challenge-score').textContent = `Score: ${correctCount} / ${attempts}`;
     const feedback = $('challenge-feedback'); feedback.replaceChildren();
-    const title = document.createElement('strong'); title.textContent = success ? '✓ Correct prediction!' : `Not quite — you selected ${value}.`;
+    const title = document.createElement('strong'); title.textContent = success ? 'Correct prediction.' : `Not quite — you selected ${value}.`;
     const detail = document.createElement('span'); detail.className = 'feedback-reason';
     detail.textContent = success ? correctExplanation(question) : explainMistake(question, value);
     feedback.append(title, detail); feedback.hidden = false;
     $('challenge-show').hidden = false; $('challenge-next').hidden = false;
     $('challenge-note').textContent = `Your answer: ${value}. The green node marks the correct selection, ${question.answer}.`;
     drawChallenge();
+    // Make the click itself visible: the picked node bounces if right,
+    // shakes if wrong — no more silent color-only feedback.
+    if (!reduceMotion) {
+      const picked = [...$('challenge-svg').querySelectorAll('g[aria-label^="Choose node"]')]
+        .find(g => g.getAttribute('aria-label') === `Choose node ${value}`);
+      const inner = picked && picked.querySelector('.node-inner');
+      if (inner) {
+        if (success) inner.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.3)' }, { transform: 'scale(1)' }], { duration: 480, easing: 'ease-out' });
+        else inner.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'translateX(0)' }], { duration: 380, easing: 'ease-in-out' });
+      }
+    }
   }
   function renderChallenge() {
     stopPlayer(); answered = false; solution = null; solutionIndex = 0;
@@ -376,11 +506,11 @@
     $('challenge-show').hidden = true;
     $('challenge-next').hidden = true;
     $('solution-controls').hidden = true;
-    $('challenge-next').textContent = guidedMode && challengeIndex === guided.length - 1 ? 'Restart guided challenges ↻' : 'Next challenge →';
-    $('challenge-note').textContent = 'Click a node in the tree to answer. The amber node is being deleted.';
+    $('challenge-next').textContent = guidedMode && challengeIndex === guided.length - 1 ? 'Restart guided challenges' : 'Next challenge';
+    $('challenge-note').textContent = 'Click a node in the tree to answer. The orange node is being deleted.';
     const instructions = $('answer-options'); instructions.replaceChildren();
     const tip = document.createElement('div'); tip.className = 'challenge-instruction';
-    tip.textContent = '👆 Select a circle directly on the tree. Keyboard: Tab to a node, then Enter or Space.';
+    tip.textContent = 'Select a circle directly on the tree. Keyboard: Tab to a node, then Enter or Space.';
     instructions.appendChild(tip);
     drawChallenge();
   }
@@ -405,7 +535,7 @@
     if (!solution) return;
     if (player !== null) { stopPlayer(); return; }
     if (solutionIndex >= solution.steps.length - 1) solutionTo(0);
-    $('solution-play').textContent = 'Ⅱ Pause';
+    $('solution-play').textContent = 'Pause';
     player = setInterval(() => solutionTo(solutionIndex + 1), 1050);
   });
   function newQuestion() {
