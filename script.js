@@ -156,7 +156,7 @@
       ghost.animate([
         { transform: `translate(${pos.x}px, ${pos.y}px) scale(1)`, opacity: 1 },
         { transform: `translate(${pos.x}px, ${pos.y + 14}px) scale(.35)`, opacity: 0 }
-      ], { duration: 620, easing: 'ease-in' });
+      ], { duration: 620, easing: 'ease-in', fill: 'forwards' });
     });
     // Nodes: ground shadow first (gives the lifted, 3D feel), then the disc.
     nodes.forEach(n => {
@@ -310,6 +310,9 @@
     });
     $('go-btn').textContent = `${op[0].toUpperCase() + op.slice(1)} node`;
     stopMainPlayer();
+    // Switching operation/preset swaps in a fresh tree: clear the
+    // renderer's previous-frame memory so no ghost nodes carry over.
+    $('tree-svg')._prevPos = new Map(); $('tree-svg')._prevActive = [];
     currentTrace = null;
     render();
   }
@@ -333,7 +336,7 @@
     $('play-btn').textContent = 'Pause';
     mainPlayer = setInterval(() => stepTo(index + 1), 1150);
   });
-  $('reset-btn').addEventListener('click', () => { stopMainPlayer(); tree = BST.fromValues(EXAMPLE); currentTrace = null; render(); });
+  $('reset-btn').addEventListener('click', () => { stopMainPlayer(); $('tree-svg')._prevPos = new Map(); $('tree-svg')._prevActive = []; tree = BST.fromValues(EXAMPLE); currentTrace = null; render(); });
   // Hero 3D parallax: tilt the floating tree a few degrees toward the pointer.
   const heroScene = $('hero-scene');
   if (heroScene && !reduceMotion) {
@@ -512,6 +515,9 @@
     const tip = document.createElement('div'); tip.className = 'challenge-instruction';
     tip.textContent = 'Select a circle directly on the tree. Keyboard: Tab to a node, then Enter or Space.';
     instructions.appendChild(tip);
+    // A new challenge is a different tree, not a new frame of the old one:
+    // clear the renderer's memory so no ghost nodes carry over between problems.
+    $('challenge-svg')._prevPos = new Map(); $('challenge-svg')._prevActive = [];
     drawChallenge();
   }
   function solutionTo(i) {
