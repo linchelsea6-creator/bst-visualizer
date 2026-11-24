@@ -18,14 +18,12 @@
     <header class="site-header">
       <a class="brand" href="#top" aria-label="BST Lab home"><span class="brand-mark" aria-hidden="true">50</span><span>BST Lab</span></a>
       <nav aria-label="Main navigation"><a class="nav-link active" href="#explorer">Explorer</a><a class="nav-link" href="#challenge">Challenge</a><a class="nav-link" href="#learn">The three cases</a></nav>
-      <span class="header-note">a data structures study tool</span>
     </header>
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
           <h1 id="hero-title">Deletion is the hard part.<br>Watch it happen.</h1>
           <div class="hero-actions"><a class="button button-primary" href="#explorer">Try it on a tree</a><a class="button button-ghost" href="#challenge">Skip to the deletion challenge</a></div>
-          <p class="hero-footnote">Start with the preset below the tree: “Delete a node with 2 children.” That's the case everyone gets wrong on the exam.</p>
         </div>
         <div class="scene" id="hero-scene" aria-hidden="true">
           <div class="scene-plane"></div>
@@ -73,7 +71,7 @@
       </section>
 
       <section id="challenge" class="challenge-section" aria-labelledby="challenge-title">
-        <div class="section-top"><div><h2 id="challenge-title">The deletion challenge</h2><p>Don't watch first. Guess which node matters, click it on the tree, then watch the solution play out.</p></div></div>
+        <div class="section-top"><div><h2 id="challenge-title">The deletion challenge</h2><p>Guess which node matters, click it on the tree, then watch the solution play out.</p><p>When a node has two children, this tool always uses the in-order successor — the smallest value in the right subtree. Using the largest value in the left subtree is equally correct in practice; this tool just sticks to the successor so every problem has one expected answer.</p></div></div>
         <div class="challenge-settings"><label for="challenge-level">Practice mode</label><select id="challenge-level"><option value="guided">Guided: the 3 deletion cases</option><option value="random">Fresh random trees</option></select><button id="challenge-new" class="button button-outline" type="button">New problem</button><span id="challenge-score" aria-live="polite">Score: 0 / 0</span></div>
         <div class="challenge-grid"><div class="panel challenge-figure"><div class="challenge-header"><span id="challenge-number">Challenge 1 of 3</span><span id="challenge-case">Two children</span></div><svg id="challenge-svg" viewBox="0 0 620 300" role="group" aria-label="Clickable binary search tree for the current challenge"></svg><p id="challenge-note" class="challenge-note">Click a node in the tree to make your prediction. The orange node is being deleted.</p><div class="solution-controls" id="solution-controls" hidden><div class="solution-top"><strong>Watch the solution</strong><span id="solution-count">1 / 1</span></div><p id="solution-message" aria-live="polite"></p><div class="step-controls"><button type="button" id="solution-prev" class="button button-outline">Back</button><button type="button" id="solution-play" class="button button-outline">Play</button><button type="button" id="solution-next" class="button button-dark">Next</button></div></div></div><div class="panel challenge-answers"><h3 id="challenge-question">What happens next?</h3><p id="challenge-prompt">Click a node on the left to answer.</p><div class="answer-options" id="answer-options"></div><div id="challenge-feedback" aria-live="polite" class="feedback" hidden></div><button id="challenge-show" type="button" class="button button-primary" hidden>Watch the solution</button><button id="challenge-next" type="button" class="button button-dark" hidden>Next challenge</button></div></div>
         <div class="method-note"><strong>Why predict first?</strong> Watching a trace feels like understanding, right up until the exam asks you to do it cold. Locating the important node yourself — successor, only child, or the leaf itself — is the part worth practicing.</div>
@@ -83,12 +81,12 @@
         <div class="concept-grid">
           <article class="concept-card"><span class="concept-index">No children</span><h3>The leaf</h3><p>Remove it and set its parent's link to null. Nothing else moves — you'll see it shrink away in the explorer.</p></article>
           <article class="concept-card"><span class="concept-index">One child</span><h3>The bypass</h3><p>The parent skips the deleted node and links straight to its only child. Watch the child slide up into the empty spot.</p></article>
-          <article class="concept-card accent-card"><span class="concept-index">Two children — the tricky one</span><h3>The successor swap</h3><p>You can't just snip it out. Copy the in-order successor's value up into this node, then delete the successor's old node down below.</p></article>
+          <article class="concept-card accent-card"><span class="concept-index">Two children — the tricky one</span><h3>The successor swap</h3><p>Copy the in-order successor's value up into this node, then delete the successor's old node down below.</p></article>
         </div>
         <div class="insight"><div><strong>Why the successor, specifically?</strong><p>It's the smallest value in the right subtree — the next value up from the one you're deleting. It is larger than everything in the left subtree and smaller than everything left in the right, so the ordering still holds after the swap. (The predecessor — largest in the left subtree — works too. This site always uses the successor, so the traces stay consistent.)</p></div></div>
       </section>
     </main>
-    <footer><span>BST Lab</span><span>Insert · Search · Delete — that's the whole tree.</span></footer>
+    <footer><span>BST Lab</span></footer>
   </div>
 </body>
 </html>
